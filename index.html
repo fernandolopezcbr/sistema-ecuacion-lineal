@@ -1,0 +1,429 @@
+<!-- copyright 2019 - ∞ Suraj, All rights reserved. -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Resolucion de sistema de ecuaciones lineal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <main>
+        <header>
+            <button class="menu-symbol">
+                <hr>
+                <hr>
+                <hr></button>
+            <h1>Resolver sistema de ecuaciones lineales</h1>
+        </header>
+        <button id="giveExampleBtn">Ver Ejemplo</button>
+        <label for="noOfEqnInputBox" id="label-noOfEqnInputBox">
+            No. of variables:
+            <input type="number" id="noOfEqnInputBox" value="2">
+        </label>
+
+        <fieldset id="inputContainer">
+            <legend class="inputContainer-header">ECUACION</legend>
+            <label for="equationInputBox">
+                <input type="text" class="l equationInputBox">
+                <input type="text" class="l equationInputBox">
+            </label>
+        </fieldset>
+        <button id="goToEvaluateBtn">click</button>
+        <fieldset id="outputContainer">
+            <legend class="outputContainer-header">RESPUESTA</legend>
+            <section id="output"></section>
+        </fieldset>
+        <footer><center><sup>&copy;</sup>2023 <big>&infin;</big> Luis Fernando Lopez, All rights reserved. </center></footer>
+    </main>
+    <aside id="historyContainer">
+        <header>
+            <h2>Historial</h2>
+        </header>
+    </aside>
+
+    <!-- The popup Window -->
+    <input type="checkbox" id="showpopupWindowCheckbox" style="display: none;">
+    <article id="popupWindow" class="popupWindow">
+        <!-- popupWindow content -->
+        <div class="popupWindow-content">
+            <label for="showpopupWindowCheckbox">
+                <h3 id="closePopupWindow">&times;</h3>
+            </label>
+            <header class="popupWindow-header">
+                <h3>Header</h3>
+            </header>
+            <article class="popupWindow-body">
+                <p>Some text in the Body</p>
+                <p>Some other text...</p>
+            </article>
+            <footer class="popupWindow-footer">
+                <h4>Footer</h4>
+            </footer>
+        </div>
+    </article>
+    <script>
+        let giveExampleBtn = document.getElementById('giveExampleBtn');
+        let noOfEqnInputBox = document.getElementById('noOfEqnInputBox');
+        let menuSymbol = document.querySelector('.menu-symbol');
+        let goToEvaluateBtn = document.getElementById('goToEvaluateBtn');
+        let output = document.getElementById('output');
+        let historyContainer = document.getElementById('historyContainer');
+        let historyContainerHeader = document.querySelector('#historyContainer header');
+        let mainHeader = document.querySelector('main header');
+        let showpopupWindowCheckbox = document.getElementById('showpopupWindowCheckbox');
+        showpopupWindowCheckbox.checked = false;
+
+        let fixInitialStyling = () => {
+            giveExampleBtn.style.marginTop = `${20 + mainHeader.scrollHeight}px`;
+            historyContainer.style.transform = `translateX(-${historyContainer.scrollWidth + 5}px)`;
+            historyContainer.style.height = `calc(100% - ${mainHeader.scrollHeight + 20}px)`;
+            historyContainer.style.top = `${mainHeader.scrollHeight}px`;
+        };
+        fixInitialStyling();
+        let setInputBox = () => {
+            output.innerHTML = '';
+            let inputContainer = document.getElementById('inputContainer');
+            inputContainer.innerHTML = '<legend class="inputContainer-header">EQUATION</legend>';
+            for (let index = 0; index < noOfEqnInputBox.value; index++) {
+                let element = `<input type="text" class="${index} equationInputBox">`;
+                inputContainer.insertAdjacentHTML('afterbegin', element);
+            }
+        };
+        let evaluate = () => {
+            output.innerHTML = '';
+            let equationsArr = [];
+            let stop = false;
+            let inputBox = document.querySelectorAll('#inputContainer input');
+            historyContainerHeader.insertAdjacentHTML('afterend', '<section class="aside-inputContainer"></section>');
+            let firstInputContainer = document.querySelector('#historyContainer .aside-inputContainer');
+            let emptyInputBox = false;
+            let invalidCharacterPresent = false;
+            let improperEquation = false;
+            let ErrorMessage = ["ERROR IN TAKING INPUT"];
+            inputBox.forEach(element => {
+                if (/([a-zA-Z0-9-+ ])+(=)([a-zA-Z0-9-+ ])+/.test(element.value)) {
+                    equationsArr.push(newEquationObject(element.value));
+                    firstInputContainer.innerHTML += `<input type="text" class="equationInputBox" value="${element.value}" disabled>`
+                } else if (element.value === '') {
+                    if (!emptyInputBox) {
+                        ErrorMessage.push("El cuadro de entrada vacío no es válido");
+                    }
+                    emptyInputBox = true;
+                    stop = true;
+                } else {
+                    if (!improperEquation) {
+                        ErrorMessage.push("Probablemente no hayas escrito la ecuacion correcta");
+                    }
+                    improperEquation = true;
+                    stop = true;
+                }
+                if (/[^a-zA-Z0-9-+\s=.]+/.test(element.value)) {
+                    if (!invalidCharacterPresent) {
+                        ErrorMessage.push("Any non-english character is not accepted as a variable name");
+                        ErrorMessage.push("special characters except '<b>+</b>', '<b>-</b>', '<b>=</b>' or '<b>.</b>' are not accepted");
+                    }
+                    invalidCharacterPresent = true;
+                    stop = true;
+                }
+            });
+
+            if (stop) {
+                ErrorMessage.push("Ingrese el sistema de ecuación VÁLIDO para obtener la Solución Única");
+                Showpopup(ErrorMessage);
+                firstInputContainer.parentNode.removeChild(firstInputContainer);
+                return false;
+            }
+
+            // createMatrix() returns: array[coeffiecient matxix, variable's matrix, constant's matrix];
+            let matrixWithVariableSeperated = createMatrix(equationsArr);
+            if (!matrixWithVariableSeperated) return false;
+            if (matrixWithVariableSeperated[0].length > matrixWithVariableSeperated[0][0].length) {
+                Showpopup([
+                    "ERROR Detected",
+                    "No. de Ecuación es más que no. de variable",
+                    "Introduce otro sistema de ecuaciones para obtener la Solución Única"
+                ]);
+                return false;
+            }
+            let inverseOfCoefficientMatrix = inverse(matrixWithVariableSeperated[0]);
+            if (!inverseOfCoefficientMatrix) {
+                detectDeterminantZeroError(matrixWithVariableSeperated);
+                return false;
+            }
+            let product = matrixProduct(inverseOfCoefficientMatrix, matrixWithVariableSeperated[2]);
+            if (product === undefined) return false; //this may be undefined if matrixProduct() returns undefined;
+            output.innerHTML = '';
+            for (let row = 0, col = 0; row < product.length; row++) {
+                output.insertAdjacentHTML('beforeend', `<output>${matrixWithVariableSeperated[1][row][col]} = ${product[row][col]}</output>`);
+                firstInputContainer.innerHTML += `<output>${matrixWithVariableSeperated[1][row][col]} = ${product[row][col]}</output>`;
+            }
+            return true;
+        }
+
+        /*
+        function: createMatrix(array);
+        accept: an array of equation's object;
+        return: array[coeffiecient matxix, variable's matrix, constant's matrix]
+        */
+        let createMatrix = (equationsArr) => {
+            let referenceObjArr = [];
+            equationsArr.forEach(element => {
+                // condition no. of variables should be less than or equal to the number of Equations;
+                // if equation is homogeneous then the below function will permit if equation has 1 variable more than no of equation.
+                // therefore homogeneous equation will targeted while creating new constant.
+                if (Object.getOwnPropertyNames(element).length <= equationsArr.length + 1) {
+                    referenceObjArr = Object.getOwnPropertyNames(element);
+                    return null;
+                }
+            });
+
+            if (referenceObjArr.length === 0) {
+                Showpopup([
+                    "ERROR Detected",
+                    "No. of Equation is less than no. of variable",
+                    "Introduce otro sistema de ecuaciones para obtener la Solución Única"
+                ]);
+                return false;
+            }
+
+            let matrixA = [];
+            let matrixC = [];
+            let matrixX = [];
+            for (const itr of referenceObjArr) {
+                if (itr !== 'constant') {
+                    matrixX.push([`${itr}`]);
+                }
+            }
+            let ExcessVariableInHomogeneousError = false;
+            for (let i = 0; i < equationsArr.length; i++) {
+                let tempRow = [];
+                for (let ii = 0; ii < matrixX.length; ii++) {
+                    let elm = equationsArr[i][`${matrixX[ii][0]}`];
+                    if (elm == undefined) {
+                        tempRow.push(0);
+                    } else {
+                        tempRow.push(elm);
+                    }
+                }
+                let con = -equationsArr[i][`constant`];
+                if (isNaN(con)) {
+                    if (referenceObjArr.length === equationsArr.length + 1) {
+                        ExcessVariableInHomogeneousError = true;
+                    } else {
+                        ExcessVariableInHomogeneousError = false;
+                    }
+                    matrixC.push([0]);
+                } else {
+                    ExcessVariableInHomogeneousError = false;
+                    matrixC.push([con]);
+                }
+                matrixA.push(tempRow);
+            }
+            if (ExcessVariableInHomogeneousError) {
+                Showpopup([
+                    "ERROR Detected",
+                    "Your Input contains one extra variable than expected",
+                    "Origin is the solution of homogeneous system of Equation",
+                    "Enter One more equation to get the Unique Solution"
+                ]);
+                return false;
+            }
+
+            return [matrixA, matrixX, matrixC];
+        };
+        let Example = () => {
+            let exampleArr = [
+                ['x+2y+3z=3', '2x+4y+5z=5', '3x+5y+6z= -7'],
+                ['2x+y=5', '4x+y=8'],
+                ['2x - y + z = -1', 'x + 2y + 3z = -8', '3x + y - 4z = -1'],
+                ['6x=6+9+3x'],
+                ['3x+2y+6z=20','x+y+2z=3','2x+2y-5z=6']
+            ];
+            setTimeout(() => {
+            setExample(exampleArr[parseInt(Math.random() * 10) % exampleArr.length]);
+            }, 200);
+        }
+        let setExample = (exampleEquation) => {
+            // let exampleEquation = ['x+2y+3z=3', '2x+4y+5z=5', '3x+5y+6z=7'];
+            alert(`Lets solve the Equations ${exampleEquation}`);
+            alert('We will enter no. of variables present in equation');
+            setTimeout(() => {
+                noOfEqnInputBox.classList.add('redOutline');
+                noOfEqnInputBox.focus();
+            }, 700);
+            setTimeout(() => {
+                noOfEqnInputBox.value = exampleEquation.length;
+                setInputBox();
+            }, 1600);
+            setTimeout(() => {
+                noOfEqnInputBox.classList.remove('redOutline');
+            }, 2500);
+            setTimeout(() => {
+                alert('now enter the equations');
+                setTimeout(() => {
+                    let equationInputBoxes = document.querySelectorAll('#inputContainer .equationInputBox');
+                    for (let count = 0; count < noOfEqnInputBox.value; count++) {
+                        const elm = equationInputBoxes[count];
+                        setTimeout(() => {
+                            elm.classList.add('redOutline');
+                            elm.focus();
+                        }, 1100 * count + 300);
+                        setTimeout(() => {
+                            elm.value = exampleEquation[count];
+                        }, 1100 * count + 800);
+                        setTimeout(() => {
+                            elm.classList.remove('redOutline');
+                        }, 1100 * count + 1100);
+                    }
+                }, 500);
+                setTimeout(() => {
+                        goToEvaluateBtn.focus();
+                    setTimeout(() => {
+                        goToEvaluateBtn.classList.add('redOutline');
+                    }, 500);
+                    setTimeout(() => {
+                        goToEvaluateBtn.click();
+                    }, 800);
+                    setTimeout(() => {
+                        goToEvaluateBtn.classList.remove('redOutline');
+                    }, 1000);
+                }, 1500 + noOfEqnInputBox.value * 1100);
+                setTimeout(() => {
+                    alert('now click on menu icon to see the log history');
+                    setTimeout(() => {
+                        menuSymbol.classList.add('redOutline');
+                        menuSymbol.focus();
+                    }, 500);
+                    setTimeout(() => {
+                        menuSymbol.click();
+                    }, 1500);
+                    setTimeout(() => {
+                        menuSymbol.classList.remove('redOutline');
+                    }, 2600);
+                    setTimeout(() => {
+                        alert('Thank You!!♥');
+                    }, 3000);
+                }, 3500 + noOfEqnInputBox.value * 1100);
+            }, 2800);
+
+        }
+
+        goToEvaluateBtn.addEventListener('click', evaluate);
+        noOfEqnInputBox.addEventListener('input', setInputBox);
+        giveExampleBtn.addEventListener('click', Example);
+        window.addEventListener('resize', fixInitialStyling);
+
+        menuSymbol.addEventListener('click', () => {
+            menuSymbol.classList.toggle('cross-symbol');
+            historyContainer.classList.toggle('translate0');
+        });
+    </script>
+    <script>
+
+        let detectDeterminantZeroError = (matrixWithVariableSeperated) => {
+            let coeffiecientMatrix = matrixWithVariableSeperated[0];
+            let constantMatrix = matrixWithVariableSeperated[2];
+            for (let i = 0; i < coeffiecientMatrix.length; i++) {
+                let rowArr = coeffiecientMatrix[i];
+                rowArr.push(constantMatrix[i][0]);
+                let gcdOfNum = gcd(rowArr);
+                for (let ii = 0; ii < rowArr.length; ii++) {
+                    let elm = rowArr[ii];
+                    let tempElm = `${elm}`.match(/(?:[.]).*/g);
+                    if (tempElm) {
+                        let noOfTensToMultiply = Math.pow(10, tempElm.length);
+                        rowArr[ii] = (elm * noOfTensToMultiply) / (gcdOfNum * noOfTensToMultiply);
+                    } else {
+                        rowArr[ii] = elm / gcdOfNum;
+                    }
+                }
+                coeffiecientMatrix[i] = rowArr;
+            }
+            for (let i = coeffiecientMatrix[0].length - 1; i >= 0; i--) {
+                let parallel = false;
+                let coincident = false;
+                for (let ii = 0; ii < coeffiecientMatrix.length - 1; ii++) {
+                    if (coeffiecientMatrix[ii][i] === coeffiecientMatrix[ii + 1][i] || (!coeffiecientMatrix[ii][i] && !coeffiecientMatrix[ii + 1][i])) {
+                        // infinite solution
+                        coincident = true;
+                    } else {
+                        // same slope no solution
+                        parallel = true;
+                    }
+                }
+                if (parallel && coincident) {
+                    Showpopup([
+                        "NO SOLUTION EXIST",
+                        "Parallel curves are detected",
+                        "Coincident curves are detected",
+                        "System of Equation is INCONSISTENT",
+                        "Enter another Equations to get the Unique Solution"
+                    ]);
+                } else if (parallel) {
+                    Showpopup([
+                        "NO SOLUTION EXIST",
+                        "Parallel curves are detected",
+                        "System of Equation is INCONSISTENT",
+                        "Enter another Equations to get the Unique Solution"
+                    ]);
+                } else if (coincident) {
+                    Showpopup([
+                        "INFINITE SOLUTION EXIST",
+                        "Coincident curves are detected",
+                        "Enter another Equations to get the Unique Solution"
+                    ]);
+                } else {
+                    Showpopup([
+                        "ERROR",
+                        "Some Unexpected Error has occured!",
+                        "Please Report this to me",
+                        "Enter another Equations to get the Unique Solution"
+                    ]);
+                }
+                break;
+            }
+            return null;
+        };
+    </script>
+    <script>
+        let Showpopup = (message) => {
+
+            let popupWindow = document.querySelector('#popupWindow');
+
+            let popupWindowHeader = document.querySelector('.popupWindow-header');
+            let popupWindowBody = document.querySelector('.popupWindow-body');
+            let popupWindowFooter = document.querySelector('.popupWindow-footer');
+
+            popupWindowHeader.innerHTML = "";
+            popupWindowBody.innerHTML = "";
+            popupWindowFooter.innerHTML = "";
+            popupWindowHeader.insertAdjacentHTML('beforeend', `<h3>${message[0]}</h3>`);
+            for (let i = 1; i < message.length - 1; i++) {
+                popupWindowBody.insertAdjacentHTML('beforeend', `<p>${message[i]}</p>`);
+            }
+            popupWindowFooter.insertAdjacentHTML('beforeend', `<h4>${message[message.length - 1]}</h4>`);
+
+            // When the user clicks anywhere outside of the popupWindow, close it
+            window.onclick = (event) => {
+                if (event.target == popupWindow) {
+                    popupWindowCloser();
+                }
+            }
+            // delay for better user experience
+            setTimeout(() => {
+            showpopupWindowCheckbox.checked = true;
+            }, 100);
+        };
+        let popupWindowCloser = () => {
+            document.getElementById('showpopupWindowCheckbox').checked = false;
+        }
+    </script>
+    <script src="app.js"></script>
+</body>
+
+</html>
